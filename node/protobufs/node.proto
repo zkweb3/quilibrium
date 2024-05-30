@@ -1,0 +1,242 @@
+syntax = "proto3";
+
+package quilibrium.node.node.pb;
+
+option go_package = "source.quilibrium.com/quilibrium/monorepo/node/protobufs";
+
+import "clock.proto";
+
+message GetFramesRequest {
+  bytes filter = 1;
+  uint64 from_frame_number = 2;
+  uint64 to_frame_number = 3;
+  bool include_candidates = 4;
+}
+
+message GetFrameInfoRequest {
+  bytes filter = 1;
+  uint64 frame_number = 2;
+  bytes selector = 3;
+}
+
+message GetPeerInfoRequest {}
+
+message GetNodeInfoRequest {}
+
+message GetNetworkInfoRequest {}
+
+message FramesResponse {
+  repeated quilibrium.node.clock.pb.ClockFrame truncated_clock_frames = 1;
+}
+
+message FrameInfoResponse {
+  quilibrium.node.clock.pb.ClockFrame clock_frame = 1;
+}
+
+message PeerInfo {
+  bytes peer_id = 1;
+  repeated string multiaddrs = 2;
+  uint64 max_frame = 3;
+  int64 timestamp = 4;
+  bytes version = 5;
+  bytes signature = 6;
+  bytes public_key = 7;
+  bytes total_distance = 8;
+}
+
+message PeerInfoResponse {
+  repeated PeerInfo peer_info = 1;
+  repeated PeerInfo uncooperative_peer_info = 2;
+}
+
+message NetworkInfo {
+  bytes peer_id = 1;
+  repeated string multiaddrs = 2;
+  double peer_score = 3;
+}
+
+message NodeInfoResponse {
+  string peer_id = 1;
+  uint64 max_frame = 2;
+  uint64 peer_score = 3;
+  bytes version = 4;
+}
+
+message PutPeerInfoRequest {
+  repeated PeerInfo peer_info = 1;
+  repeated PeerInfo uncooperative_peer_info = 2;
+}
+
+message PutNodeInfoRequest {
+  string peer_id = 1;
+  uint64 max_frame = 2;
+  uint64 peer_score = 3;
+  bytes signature = 4;
+}
+
+message PutResponse {}
+
+message NetworkInfoResponse {
+  repeated NetworkInfo network_info = 1;
+}
+
+message GetTokenInfoRequest {}
+
+message TokenInfoResponse {
+  // Total active token supply, as a 256 bit integer representing maximum
+  // divisble units. 1 QUIL = 8000000000 units, 50 QUIL would be represented by
+  // 0x0000000000000000000000000000000000000000000000000000005D21DBA000
+  bytes confirmed_token_supply = 1;
+  // Total token supply, including unconfirmed frame data, as a 256 bit integer.
+  bytes unconfirmed_token_supply = 2;
+  // The total number of tokens owned by the prover address associated with the
+  // node.
+  bytes owned_tokens = 3;
+  // The total number of tokens owned by the prover address associated with the
+  // node, including unconfirmed frame data.
+  bytes unconfirmed_owned_tokens = 4;
+}
+
+message Capability {
+  // A general protocol identifier as a uint32 – this is expected to rarely
+  // iterate, and should be uniquely identifying both protocol and version.
+  // Pragmatically speaking, this implies that the least significant byte
+  // specifies version (which should iterate most minimally), and the three most
+  // significant bytes should specify protocol. Recipients SHOULD ignore
+  // messages with incompatible protocol identifiers, but also SHOULD warn on
+  // identifiers with versions higher than the supported protocol. A large
+  // number of unsupported protocol messages may indicate spam/some other
+  // attack, whereas a large number of unsupported protocol versions may
+  // indicate an out of date client, respective to which side is the maximum of
+  // the version number.
+  uint32 protocol_identifier = 1;
+  // An optional bundle of information specific to the capability – used for
+  // extensibility in negotiating variations of a protocol – e.g. Triple-Ratchet
+  // but only for certain curve types.
+  bytes additional_metadata = 2;
+}
+
+message SelfTestReport {
+  // The difficulty the self test was conducted under
+  uint32 difficulty = 1;
+  // The resulting local time of computing the VDF test under the difficulty
+  int64 difficulty_metric = 2;
+  // The resulting local time of computing a KZG commitment for a 16 degree
+  // polynomial
+  int64 commit_16_metric = 3;
+  // The resulting local time of computing a KZG commitment for a 128 degree
+  // polynomial
+  int64 commit_128_metric = 4;
+  // The resulting local time of computing a KZG commitment for a 1024 degree
+  // polynomial
+  int64 commit_1024_metric = 5;
+  // The resulting local time of computing a KZG commitment for a 65536 degree
+  // polynomial
+  int64 commit_65536_metric = 6;
+  // The resulting local time of computing a KZG proof for a 16 degree
+  // polynomial
+  int64 proof_16_metric = 7;
+  // The resulting local time of computing a KZG proof for a 128 degree
+  // polynomial
+  int64 proof_128_metric = 8;
+  // The resulting local time of computing a KZG proof for a 1024 degree
+  // polynomial
+  int64 proof_1024_metric = 9;
+  // The resulting local time of computing a KZG proof for a 65536 degree
+  // polynomial
+  int64 proof_65536_metric = 10;
+  // The number of reported accessible cores
+  uint32 cores = 11;
+  // The total available memory
+  bytes memory = 12;
+  // The total available storage
+  bytes storage = 13;
+  // The list of supported capabilities
+  repeated Capability capabilities = 14;
+  // The highest master frame the node has
+  uint64 master_head_frame = 15;
+  // A challenge proof
+  bytes proof = 16;
+}
+
+message ValidationMessage {
+  bytes validation = 1;
+}
+
+message SyncRequest {
+  quilibrium.node.clock.pb.ClockFramesRequest frames_request = 1;
+}
+
+message SyncResponse {
+  quilibrium.node.clock.pb.ClockFramesResponse frames_response = 1;
+}
+
+service ValidationService {
+  rpc PerformValidation(ValidationMessage) returns (ValidationMessage);
+  rpc Sync(SyncRequest) returns (stream SyncResponse);
+}
+
+message GetPeerManifestsRequest {}
+
+message PeerManifest {
+  bytes peer_id = 1;
+  // The difficulty the self test was conducted under
+  uint32 difficulty = 2;
+  // The resulting local time of computing the VDF test under the difficulty
+  int64 difficulty_metric = 3;
+  // The resulting local time of computing a KZG commitment for a 16 degree
+  // polynomial
+  int64 commit_16_metric = 4;
+  // The resulting local time of computing a KZG commitment for a 128 degree
+  // polynomial
+  int64 commit_128_metric = 5;
+  // The resulting local time of computing a KZG commitment for a 1024 degree
+  // polynomial
+  int64 commit_1024_metric = 6;
+  // The resulting local time of computing a KZG commitment for a 65536 degree
+  // polynomial
+  int64 commit_65536_metric = 7;
+  // The resulting local time of computing a KZG proof for a 16 degree
+  // polynomial
+  int64 proof_16_metric = 8;
+  // The resulting local time of computing a KZG proof for a 128 degree
+  // polynomial
+  int64 proof_128_metric = 9;
+  // The resulting local time of computing a KZG proof for a 1024 degree
+  // polynomial
+  int64 proof_1024_metric = 10;
+  // The resulting local time of computing a KZG proof for a 65536 degree
+  // polynomial
+  int64 proof_65536_metric = 11;
+  // The number of reported accessible cores
+  uint32 cores = 12;
+  // The total available memory
+  bytes memory = 13;
+  // The total available storage
+  bytes storage = 14;
+  // The list of supported capabilities
+  repeated Capability capabilities = 15;
+  // The highest master frame the node has
+  uint64 master_head_frame = 16;
+  // The last time seen tick
+  int64 last_seen = 17;
+}
+
+message PeerManifestsResponse {
+  repeated PeerManifest peer_manifests = 1;
+}
+
+service NodeService {
+  rpc GetFrames(GetFramesRequest) returns (FramesResponse);
+  rpc GetFrameInfo(GetFrameInfoRequest) returns (FrameInfoResponse);
+  rpc GetPeerInfo(GetPeerInfoRequest) returns (PeerInfoResponse);
+  rpc GetNodeInfo(GetNodeInfoRequest) returns (NodeInfoResponse);
+  rpc GetNetworkInfo(GetNetworkInfoRequest) returns (NetworkInfoResponse);
+  rpc GetTokenInfo(GetTokenInfoRequest) returns (TokenInfoResponse);
+  rpc GetPeerManifests(GetPeerManifestsRequest) returns (PeerManifestsResponse);
+}
+
+service NodeStats {
+  rpc PutNodeInfo(PutNodeInfoRequest) returns (PutResponse);
+  rpc PutPeerInfo(PutPeerInfoRequest) returns (PutResponse);
+}
