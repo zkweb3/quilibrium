@@ -8,8 +8,7 @@ on:
     branches: [ "main" ]
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ghcr.io/${{ github.actor }}/quilibrium
+  IMAGE_NAME: eth2dev/quilibrium
 
 jobs:
 
@@ -30,9 +29,8 @@ jobs:
     - name: Docker login
       uses: docker/login-action@v3.0.0
       with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
     - name: Build the Docker image
       run: |
         docker build \
