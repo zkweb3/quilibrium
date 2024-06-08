@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY docker/rustup-init.sh /opt/rustup-init.sh
 
-RUN /opt/rustup-init.sh -y --profile minimal
+RUN chmod +x /opt/rustup-init.sh && /opt/rustup-init.sh -y --profile minimal
 
 # Install uniffi-bindgen-go
 RUN cargo install uniffi-bindgen-go --git https://github.com/NordSecurity/uniffi-bindgen-go --tag v0.2.1+v0.25.0
@@ -25,12 +25,12 @@ COPY . .
 
 ## Generate Rust bindings for VDF
 WORKDIR /opt/ceremonyclient/vdf
-RUN ./generate.sh
+RUN chmod +x ./generate.sh && ./generate.sh
 
 # Build and install the node
 WORKDIR /opt/ceremonyclient/node
 
-RUN ./build.sh && cp node /go/bin
+RUN chmod +x ./build.sh && ./build.sh && cp node /go/bin
 RUN go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 
 # Build and install qclient
