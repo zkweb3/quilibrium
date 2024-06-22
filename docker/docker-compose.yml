@@ -6,7 +6,7 @@ name: quilibrium
 services:
   node:
     # image: ${QUILIBRIUM_IMAGE_NAME:-quilibrium}
-    image: eth2dev/quilibrium:v1.4.19-p1-signed
+    image: eth2dev/quilibrium:v1.4.20-signed
     container_name: "quil"
     restart: unless-stopped
     # command: ["--signature-check=false"]
