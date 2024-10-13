@@ -11,7 +11,7 @@ replace source.quilibrium.com/quilibrium/monorepo/node => ../node
 replace source.quilibrium.com/quilibrium/monorepo/nekryptology => ../nekryptology
 
 require (
-	github.com/iden3/go-iden3-crypto v0.0.15
+	github.com/iden3/go-iden3-crypto v0.0.16
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.9.0
 )
@@ -32,10 +32,10 @@ require (
 )
 
 require (
-	github.com/cloudflare/circl v1.3.8
+	github.com/cloudflare/circl v1.3.9
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/libp2p/go-libp2p v0.35.1
+	github.com/libp2p/go-libp2p v0.35.4
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cobra v1.8.0

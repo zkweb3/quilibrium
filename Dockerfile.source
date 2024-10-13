@@ -40,7 +40,7 @@ RUN go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 # Build and install qclient
 WORKDIR /opt/ceremonyclient/client
 
-RUN go build -o qclient ./main.go
+RUN go mod tidy && go build -o qclient ./main.go
 
 # Allows exporting single binary
 FROM scratch AS node
