@@ -1,6 +1,7 @@
 FROM golang:1.23.2-alpine3.20 as build
 
 ARG NODE_VERSION
+ARG QCLI_VERSION
 ARG MAX_KEY_ID
 
 ENV GOEXPERIMENT=arenas
@@ -9,17 +10,35 @@ WORKDIR /opt/ceremonyclient
 
 COPY . .
 
-RUN cp "node/node-${NODE_VERSION}-linux-amd64" "node/node"
-RUN cp "node/node-${NODE_VERSION}-linux-amd64.dgst" "node/node.dgst"
+RUN apk update && apk --no-cache add curl
+
+RUN NFILES=$(curl -s "https://releases.quilibrium.com/release" | grep "linux-amd64") && \
+    for f in $NFILES; do \
+      echo $f; [ -f $f ] && rm $f; \
+      curl -s -O https://releases.quilibrium.com/$f; \
+    done
+RUN cp "node-${NODE_VERSION}-linux-amd64" "node/node"
+RUN cp "node-${NODE_VERSION}-linux-amd64.dgst" "node/node.dgst"
 RUN for i in $(seq 1 ${MAX_KEY_ID}); do \
       if [ -f node/node-${NODE_VERSION}-linux-amd64.dgst.sig.${i} ]; then \
-        cp "node/node-${NODE_VERSION}-linux-amd64.dgst.sig.${i}" "node/node.dgst.sig.${i}"; \
+        cp "node-${NODE_VERSION}-linux-amd64.dgst.sig.${i}" "node/node.dgst.sig.${i}"; \
       fi \
     done
 
 WORKDIR /opt/ceremonyclient/client
 
-RUN go mod tidy && go build -o qclient ./main.go
+RUN QFILES=$(curl -s "https://releases.quilibrium.com/qclient-release" | grep "linux-amd64") && \
+    for f in $QFILES; do \
+      echo $f; [ -f $f ] && rm $f; \
+      curl -s -O https://releases.quilibrium.com/$f; \
+    done
+RUN mv "qclient-${QCLI_VERSION}-linux-amd64" "qclient"
+RUN mv "qclient-${QCLI_VERSION}-linux-amd64.dgst" "qclient.dgst"
+RUN for i in $(seq 1 ${MAX_KEY_ID}); do \
+      if [ -f qclient-${QCLI_VERSION}-linux-amd64.dgst.sig.${i} ]; then \
+        mv "qclient-${QCLI_VERSION}-linux-amd64.dgst.sig.${i}" "qclient.dgst.sig.${i}"; \
+      fi \
+    done
 
 RUN go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.1
 
