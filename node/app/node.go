@@ -20,6 +20,7 @@ type Node struct {
 	logger         *zap.Logger
 	dataProofStore store.DataProofStore
 	clockStore     store.ClockStore
+	coinStore      store.CoinStore
 	keyManager     keys.KeyManager
 	pubSub         p2p.PubSub
 	execEngines    map[string]execution.ExecutionEngine
@@ -44,6 +45,7 @@ func newNode(
 	logger *zap.Logger,
 	dataProofStore store.DataProofStore,
 	clockStore store.ClockStore,
+	coinStore store.CoinStore,
 	keyManager keys.KeyManager,
 	pubSub p2p.PubSub,
 	// execution engines wire in here
@@ -59,6 +61,7 @@ func newNode(
 		logger,
 		dataProofStore,
 		clockStore,
+		coinStore,
 		keyManager,
 		pubSub,
 		execEngines,
@@ -79,12 +82,15 @@ func GetOutputs(output []byte) (
 	return index, indexProof, kzgCommitment, kzgProof
 }
 
-func nearestPowerOfTwo(number uint64) uint64 {
-	power := uint64(1)
-	for number > power {
-		power = power << 1
+func nearestApplicablePowerOfTwo(number uint64) uint64 {
+	power := uint64(128)
+	if number > 2048 {
+		power = 65536
+	} else if number > 1024 {
+		power = 2048
+	} else if number > 128 {
+		power = 1024
 	}
-
 	return power
 }
 
@@ -112,7 +118,7 @@ func (n *Node) VerifyProofIntegrity() {
 			idxCommit,
 			int(idx),
 			idxKP,
-			nearestPowerOfTwo(uint64(parallelism)),
+			nearestApplicablePowerOfTwo(uint64(parallelism)),
 		)
 		if err != nil {
 			panic(err)
@@ -167,6 +173,10 @@ func (n *Node) GetLogger() *zap.Logger {
 
 func (n *Node) GetClockStore() store.ClockStore {
 	return n.clockStore
+}
+
+func (n *Node) GetCoinStore() store.CoinStore {
+	return n.coinStore
 }
 
 func (n *Node) GetDataProofStore() store.DataProofStore {
