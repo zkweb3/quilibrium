@@ -20,7 +20,7 @@ RUN NFILES=$(curl -s "https://releases.quilibrium.com/release" | grep "linux-amd
 RUN cp "node-${NODE_VERSION}-linux-amd64" "node/node"
 RUN cp "node-${NODE_VERSION}-linux-amd64.dgst" "node/node.dgst"
 RUN for i in $(seq 1 ${MAX_KEY_ID}); do \
-      if [ -f node/node-${NODE_VERSION}-linux-amd64.dgst.sig.${i} ]; then \
+      if [ -f node-${NODE_VERSION}-linux-amd64.dgst.sig.${i} ]; then \
         cp "node-${NODE_VERSION}-linux-amd64.dgst.sig.${i}" "node/node.dgst.sig.${i}"; \
       fi \
     done
@@ -67,8 +67,12 @@ COPY --from=build /opt/ceremonyclient/node/node.dgst /usr/local/bin
 COPY --from=build /opt/ceremonyclient/node/node.dgst.sig.* /usr/local/bin
 
 COPY --from=build /opt/ceremonyclient/client/qclient /usr/local/bin
+COPY --from=build /opt/ceremonyclient/client/qclient.dgst /usr/local/bin
+COPY --from=build /opt/ceremonyclient/client/qclient.dgst.sig.* /usr/local/bin
 
 COPY --from=build /go/bin/grpcurl /usr/local/bin
+
+RUN chmod +x /usr/local/bin/node && chmod +x /usr/local/bin/qclient
 
 WORKDIR /root
 
