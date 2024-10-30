@@ -195,7 +195,7 @@ func main() {
 				count++
 			}
 
-			if count < len(config.Signatories)/2+len(config.Signatories)%2 {
+			if count < ((len(config.Signatories)-4)/2)+((len(config.Signatories)-4)%2) {
 				fmt.Printf("Quorum on signatures not met")
 				os.Exit(1)
 			}
@@ -273,7 +273,7 @@ func main() {
 
 	if !*dbConsole && *core == 0 {
 		config.PrintLogo()
-		config.PrintVersion()
+		config.PrintVersion(uint8(*network))
 		fmt.Println(" ")
 	}
 
@@ -332,7 +332,7 @@ func main() {
 	}
 
 	if *core != 0 {
-		runtime.GOMAXPROCS(2)
+		// runtime.GOMAXPROCS(2)
 		rdebug.SetGCPercent(9999)
 
 		if nodeConfig.Engine.DataWorkerMemoryLimit == 0 {
@@ -429,7 +429,7 @@ func main() {
 		return
 	}
 
-	runtime.GOMAXPROCS(1)
+	// runtime.GOMAXPROCS(1)
 
 	if nodeConfig.ListenGRPCMultiaddr != "" {
 		srv, err := rpc.NewRPCServer(
@@ -661,7 +661,8 @@ func printNodeInfo(cfg *config.Config) {
 
 	conn, err := app.ConnectToNode(cfg)
 	if err != nil {
-		panic(err)
+		fmt.Println("Could not connect to node. If it is still booting, please wait.")
+		os.Exit(1)
 	}
 	defer conn.Close()
 

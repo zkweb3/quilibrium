@@ -63,6 +63,10 @@ type ClockStore interface {
 		parentSelector []byte,
 		truncate bool,
 	) (*protobufs.ClockFrame, error)
+	GetStagedDataClockFramesForFrameNumber(
+		filter []byte,
+		frameNumber uint64,
+	) ([]*protobufs.ClockFrame, error)
 	SetLatestDataClockFrameNumber(
 		filter []byte,
 		frameNumber uint64,
@@ -816,6 +820,45 @@ func (p *PebbleClockStore) GetStagedDataClockFrame(
 	return parent, nil
 }
 
+func (p *PebbleClockStore) GetStagedDataClockFramesForFrameNumber(
+	filter []byte,
+	frameNumber uint64,
+) ([]*protobufs.ClockFrame, error) {
+	iter, err := p.db.NewIter(
+		clockDataParentIndexKey(filter, frameNumber, bytes.Repeat([]byte{0x00}, 32)),
+		clockDataParentIndexKey(filter, frameNumber, bytes.Repeat([]byte{0xff}, 32)),
+	)
+	if err != nil {
+		if errors.Is(err, pebble.ErrNotFound) {
+			return nil, errors.Wrap(ErrNotFound, "get staged data clock frames")
+		}
+		return nil, errors.Wrap(err, "get staged data clock frames")
+	}
+
+	frames := []*protobufs.ClockFrame{}
+
+	for iter.First(); iter.Valid(); iter.Next() {
+		data := iter.Value()
+		frame := &protobufs.ClockFrame{}
+		if err := proto.Unmarshal(data, frame); err != nil {
+			return nil, errors.Wrap(err, "get staged data clock frames")
+		}
+
+		if err := p.fillAggregateProofs(frame, false); err != nil {
+			return nil, errors.Wrap(
+				errors.Wrap(err, ErrInvalidData.Error()),
+				"get staged data clock frames",
+			)
+		}
+
+		frames = append(frames, frame)
+	}
+
+	iter.Close()
+
+	return frames, nil
+}
+
 // StageDataClockFrame implements ClockStore.
 func (p *PebbleClockStore) StageDataClockFrame(
 	selector []byte,
@@ -1027,24 +1070,6 @@ func (p *PebbleClockStore) Compact(
 	}
 
 	if !cleared {
-		// If this node has been around since the early days, this is going to free
-		// up a lot of cruft.
-		if err := p.db.DeleteRange(
-			clockDataCandidateFrameKey(
-				make([]byte, 32),
-				0,
-				make([]byte, 32),
-				make([]byte, 32),
-			),
-			clockDataCandidateFrameKey(
-				bytes.Repeat([]byte{0xff}, 32),
-				1000000,
-				bytes.Repeat([]byte{0xff}, 32),
-				bytes.Repeat([]byte{0xff}, 32),
-			),
-		); err != nil {
-			return errors.Wrap(err, "compact")
-		}
 		if err := p.db.Compact(
 			clockDataCandidateFrameKey(
 				make([]byte, 32),

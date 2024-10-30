@@ -30,6 +30,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/util"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	"github.com/mr-tron/base58"
 	ma "github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
@@ -69,7 +70,7 @@ var BITMASK_ALL = []byte{
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 }
 
-var ANNOUNCE_PREFIX = "quilibrium-2.0.0-dusk-"
+var ANNOUNCE_PREFIX = "quilibrium-2.0.2-dusk-"
 
 func getPeerID(p2pConfig *config.P2PConfig) peer.ID {
 	peerPrivKey, err := hex.DecodeString(p2pConfig.PeerPrivKey)
@@ -89,6 +90,80 @@ func getPeerID(p2pConfig *config.P2PConfig) peer.ID {
 	}
 
 	return id
+}
+
+func NewBlossomSubStreamer(
+	p2pConfig *config.P2PConfig,
+	logger *zap.Logger,
+) *BlossomSub {
+	ctx := context.Background()
+
+	opts := []libp2pconfig.Option{
+		libp2p.ListenAddrStrings(p2pConfig.ListenMultiaddr),
+	}
+
+	bootstrappers := []peer.AddrInfo{}
+
+	peerinfo, err := peer.AddrInfoFromString("/ip4/185.209.178.191/udp/8336/quic-v1/p2p/QmcKQjpQmLpbDsiif2MuakhHFyxWvqYauPsJDaXnLav7PJ")
+	if err != nil {
+		panic(err)
+	}
+
+	bootstrappers = append(bootstrappers, *peerinfo)
+
+	var privKey crypto.PrivKey
+	if p2pConfig.PeerPrivKey != "" {
+		peerPrivKey, err := hex.DecodeString(p2pConfig.PeerPrivKey)
+		if err != nil {
+			panic(errors.Wrap(err, "error unmarshaling peerkey"))
+		}
+
+		privKey, err = crypto.UnmarshalEd448PrivateKey(peerPrivKey)
+		if err != nil {
+			panic(errors.Wrap(err, "error unmarshaling peerkey"))
+		}
+
+		opts = append(opts, libp2p.Identity(privKey))
+	}
+
+	bs := &BlossomSub{
+		ctx:             ctx,
+		logger:          logger,
+		bitmaskMap:      make(map[string]*blossomsub.Bitmask),
+		signKey:         privKey,
+		peerScore:       make(map[string]int64),
+		isBootstrapPeer: false,
+		network:         p2pConfig.Network,
+	}
+
+	h, err := libp2p.New(opts...)
+	if err != nil {
+		panic(errors.Wrap(err, "error constructing p2p"))
+	}
+
+	logger.Info("established peer id", zap.String("peer_id", h.ID().String()))
+
+	kademliaDHT := initDHT(
+		ctx,
+		p2pConfig,
+		logger,
+		h,
+		false,
+		bootstrappers,
+	)
+	routingDiscovery := routing.NewRoutingDiscovery(kademliaDHT)
+	util.Advertise(ctx, routingDiscovery, getNetworkNamespace(p2pConfig.Network))
+
+	if err != nil {
+		panic(err)
+	}
+
+	peerID := h.ID()
+	bs.peerID = peerID
+	bs.h = h
+	bs.signKey = privKey
+
+	return bs
 }
 
 func NewBlossomSub(
@@ -181,6 +256,13 @@ func NewBlossomSub(
 			panic(err)
 		}
 
+		opts = append(
+			opts,
+			libp2p.SwarmOpts(
+				swarm.WithIPv6BlackHoleConfig(false, 0, 0),
+				swarm.WithUDPBlackHoleConfig(false, 0, 0),
+			),
+		)
 		opts = append(opts, libp2p.ConnectionManager(cm))
 		opts = append(opts, libp2p.ResourceManager(rm))
 	}
@@ -215,7 +297,7 @@ func NewBlossomSub(
 
 	verifyReachability(p2pConfig)
 
-	discoverPeers(p2pConfig, ctx, logger, h, routingDiscovery)
+	discoverPeers(p2pConfig, ctx, logger, h, routingDiscovery, true)
 
 	// TODO: turn into an option flag for console logging, this is too noisy for
 	// default logging behavior
@@ -234,6 +316,23 @@ func NewBlossomSub(
 
 	blossomOpts := []blossomsub.Option{
 		blossomsub.WithStrictSignatureVerification(true),
+	}
+
+	if len(p2pConfig.DirectPeers) > 0 {
+		logger.Info("Found direct peers in config")
+		directPeers := []peer.AddrInfo{}
+		for _, peerAddr := range p2pConfig.DirectPeers {
+			peerinfo, err := peer.AddrInfoFromString(peerAddr)
+			if err != nil {
+				panic(err)
+			}
+			logger.Info("Adding direct peer", zap.String("peer", peerinfo.ID.String()))
+			directPeers = append(directPeers, *peerinfo)
+		}
+
+		if len(directPeers) > 0 {
+			blossomOpts = append(blossomOpts, blossomsub.WithDirectPeers(directPeers))
+		}
 	}
 
 	if tracer != nil {
@@ -277,6 +376,18 @@ func NewBlossomSub(
 	bs.peerID = peerID
 	bs.h = h
 	bs.signKey = privKey
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			for _, b := range bs.bitmaskMap {
+				if len(b.ListPeers()) < 4 {
+					discoverPeers(p2pConfig, bs.ctx, logger, bs.h, routingDiscovery, false)
+					break
+				}
+			}
+		}
+	}()
 
 	return bs
 }
@@ -481,19 +592,12 @@ func initDHT(
 	var kademliaDHT *dht.IpfsDHT
 	var err error
 	if isBootstrapPeer {
-		if p2pConfig.Network == 0 {
-			panic(
-				"this release is for normal peers only, if you are running a " +
-					"bootstrap node, please use v2.0-bootstrap",
-			)
-		} else {
-			kademliaDHT, err = dht.New(
-				ctx,
-				h,
-				dht.Mode(dht.ModeServer),
-				dht.BootstrapPeers(bootstrappers...),
-			)
-		}
+		kademliaDHT, err = dht.New(
+			ctx,
+			h,
+			dht.Mode(dht.ModeServer),
+			dht.BootstrapPeers(bootstrappers...),
+		)
 	} else {
 		kademliaDHT, err = dht.New(
 			ctx,
@@ -546,6 +650,19 @@ func initDHT(
 	return kademliaDHT
 }
 
+func (b *BlossomSub) Reconnect(peerId []byte) error {
+	peer := peer.ID(peerId)
+	info := b.h.Peerstore().PeerInfo(peer)
+	b.h.ConnManager().Unprotect(info.ID, "bootstrap")
+	time.Sleep(10 * time.Second)
+	if err := b.h.Connect(b.ctx, info); err != nil {
+		return errors.Wrap(err, "reconnect")
+	}
+
+	b.h.ConnManager().Protect(info.ID, "bootstrap")
+	return nil
+}
+
 func (b *BlossomSub) GetPeerScore(peerId []byte) int64 {
 	b.peerScoreMx.Lock()
 	score := b.peerScore[string(peerId)]
@@ -556,6 +673,16 @@ func (b *BlossomSub) GetPeerScore(peerId []byte) int64 {
 func (b *BlossomSub) SetPeerScore(peerId []byte, score int64) {
 	b.peerScoreMx.Lock()
 	b.peerScore[string(peerId)] = score
+	b.peerScoreMx.Unlock()
+}
+
+func (b *BlossomSub) AddPeerScore(peerId []byte, scoreDelta int64) {
+	b.peerScoreMx.Lock()
+	if _, ok := b.peerScore[string(peerId)]; !ok {
+		b.peerScore[string(peerId)] = scoreDelta
+	} else {
+		b.peerScore[string(peerId)] = b.peerScore[string(peerId)] + scoreDelta
+	}
 	b.peerScoreMx.Unlock()
 }
 
@@ -772,6 +899,16 @@ func verifyReachability(cfg *config.P2PConfig) bool {
 
 	if r.Error != "" {
 		fmt.Println("Reachability check failed: " + r.Error)
+		if transport == "quic" {
+			fmt.Println("WARNING!")
+			fmt.Println("WARNING!")
+			fmt.Println("WARNING!")
+			fmt.Println("You failed reachability with QUIC enabled. Consider switching to TCP")
+			fmt.Println("WARNING!")
+			fmt.Println("WARNING!")
+			fmt.Println("WARNING!")
+			time.Sleep(5 * time.Second)
+		}
 		return false
 	}
 
@@ -785,6 +922,7 @@ func discoverPeers(
 	logger *zap.Logger,
 	h host.Host,
 	routingDiscovery *routing.RoutingDiscovery,
+	init bool,
 ) {
 	logger.Info("initiating peer discovery")
 
@@ -803,7 +941,7 @@ func discoverPeers(
 			if peer.ID == h.ID() ||
 				h.Network().Connectedness(peer.ID) == network.Connected ||
 				h.Network().Connectedness(peer.ID) == network.Limited {
-				continue
+				return
 			}
 
 			logger.Debug("found peer", zap.String("peer_id", peer.ID.String()))
@@ -819,25 +957,17 @@ func discoverPeers(
 					"connected to peer",
 					zap.String("peer_id", peer.ID.String()),
 				)
-				if len(h.Network().Peers()) >= 6 {
-					break
-				}
 			}
 		}
 	}
 
-	discover()
+	if init {
+		go discover()
+	} else {
+		discover()
+	}
 
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			if len(h.Network().Peers()) < 6 {
-				discover()
-			}
-		}
-	}()
-
-	logger.Info("completed initial peer discovery")
+	logger.Info("completed peer discovery")
 }
 
 func mergeDefaults(p2pConfig *config.P2PConfig) blossomsub.BlossomSubParams {

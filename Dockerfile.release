@@ -62,6 +62,8 @@ LABEL org.opencontainers.image.source=$GIT_REPO
 LABEL org.opencontainers.image.ref.name=$GIT_BRANCH
 LABEL org.opencontainers.image.revision=$GIT_COMMIT
 
+RUN apt-get update && apt-get install -y ca-certificates
+
 COPY --from=build /opt/ceremonyclient/node/node /usr/local/bin
 COPY --from=build /opt/ceremonyclient/node/node.dgst /usr/local/bin
 COPY --from=build /opt/ceremonyclient/node/node.dgst.sig.* /usr/local/bin

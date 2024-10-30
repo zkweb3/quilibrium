@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -74,13 +75,14 @@ var BootstrapPeers = []string{
 	"/ip4/34.143.255.235/udp/8336/quic-v1/p2p/QmeifsP6Kvq8A3yabQs6CBg7prSpDSqdee8P2BDQm9EpP8",
 	"/ip4/34.34.125.238/udp/8336/quic-v1/p2p/QmZdSyBJLm9UiDaPZ4XDkgRGXUwPcHJCmKoH6fS9Qjyko4",
 	"/ip4/34.80.245.52/udp/8336/quic-v1/p2p/QmNmbqobt82Vre5JxUGVNGEWn2HsztQQ1xfeg6mx7X5u3f",
-	"/dns/bravo-1.qcommander.sh/udp/8336/quic-v1/p2p/QmWFK1gVuhEqZdr8phTo3QbyLwjYmyivx31Zubqt7oR4XB",
+	"/dns/bravo-1.qcommander.sh/udp/8336/quic-v1/p2p/QmURj4qEB9vNdCCKzSMq4ESEgz13nJrqazgMdGi2DBSeeC",
 	"/ip4/109.199.100.108/udp/8336/quic-v1/p2p/Qma9fgugQc17MDu4YRSvnhfhVre6AYZ3nZdW8dSUYbsWvm",
 	"/ip4/47.251.49.193/udp/8336/quic-v1/p2p/QmP6ADPmMCsB8y82oFbrKTrwYWXt1CTMJ3jGNDXRHyYJgR",
 	"/ip4/138.201.203.208/udp/8336/quic-v1/p2p/QmbNhSTd4Y64ZCbV2gAXYR4ZFDdfRBMfrgWsNg99JHxsJo",
 	"/ip4/148.251.9.90/udp/8336/quic-v1/p2p/QmRpKmQ1W83s6moBFpG6D6nrttkqdQSbdCJpvfxDVGcs38",
 	"/ip4/15.235.211.121/udp/8336/quic-v1/p2p/QmZHNLUSAFCkTwHiEE3vWay3wsus5fWYsNLFTFU6tPCmNR",
 	"/ip4/63.141.228.58/udp/8336/quic-v1/p2p/QmezARggdWKa1sw3LqE3LfZwVvtuCpXpK8WVo8EEdfakJV",
+	"/ip4/185.209.178.191/udp/8336/quic-v1/p2p/QmcKQjpQmLpbDsiif2MuakhHFyxWvqYauPsJDaXnLav7PJ",
 	// purged peers (keep your node online to return to this list)
 	// "/ip4/204.186.74.47/udp/8317/quic-v1/p2p/Qmd233pLUDvcDW3ama27usfbG1HxKNh1V9dmWVW1SXp1pd",
 	// "/ip4/186.233.184.181/udp/8336/quic-v1/p2p/QmW6QDvKuYqJYYMP5tMZSp12X3nexywK28tZNgqtqNpEDL",
@@ -99,8 +101,8 @@ var BootstrapPeers = []string{
 }
 
 type Signature struct {
-	PublicKeyHex string `json:"publicKeyHex"`
-	SignatureHex string `json:"signatureHex"`
+	PublicKeyHex string `json:PublicKeyHex`
+	SignatureHex string `json:SignatureHex`
 }
 
 type SignedGenesisUnlock struct {
@@ -120,19 +122,79 @@ var Signatories = []string{
 	"92cd8ee5362f3ae274a75ab9471024dbc144bff441ed8af7d19750ac512ff51e40e7f7b01e4f96b6345dd58878565948c3eb52c53f250b5080",
 	"001a4cbfce5d9aeb7e20665b0d236721b228a32f0baee62ffa77f45b82ecaf577e8a38b7ef91fcf7d2d2d2b504f085461398d30b24abb1d700",
 	"65b835071731c6e785bb2d107c7d85d8a537d79c435c3f42bb2f87027f93f858d7b37c598cef267a5db46e345f7a6f81969b465686657d1e00",
-	"4507626f7164e7d8c304c07ff8d2e23c113fe108b221d2e60672f4d07750345815e2b4b3cc3df4d3466bf2f669c35c3172e06511270612ab00",
-	"4fb2537345e46be3d5f96340c1441007501702dd5bfaf6dbf6943bbefceca8fb2b94ec0a8a1a2f49850fbe1d10244889a4f40abfa9e0c9e000",
+	"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+	"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	"57be2861faf0fffcbfd122c85c77010dce8f213030905781b85b6f345d912c7b5ace17797d9810899dfb8d13e7c8369595740725ab3dd5bd00",
 	"61628beef8f6964466fd078d6a2b90a397ab0777a14b9728227fd19f36752f9451b1a8d780740a0b9a8ce3df5f89ca7b9ff17de9274a270980",
-	"5547afc71b02821e2f5bfdd30fbe1374c3853898deff20a1b5cc729b8e81670fbbb9d1e917f85d153ea4b26bbf6f9c546dc1b64b9916608d80",
+	"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	"81d63a45f068629f568de812f18be5807bfe828a830097f09cf02330d6acd35e3607401df3fda08b03b68ea6e68afd506b23506b11e87a0f80",
 	"6e2872f73c4868c4286bef7bfe2f5479a41c42f4e07505efa4883c7950c740252e0eea78eef10c584b19b1dcda01f7767d3135d07c33244100",
-	"a114b061f8d35e3f3497c8c43d83ba6b4af67aa7b39b743b1b0a35f2d66110b5051dd3d86f69b57122a35b64e624b8180bee63b6152fce4280",
+	"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 }
 
 var unlock *SignedGenesisUnlock
 
 func DownloadAndVerifyGenesis(network uint) (*SignedGenesisUnlock, error) {
+	if network != 0 {
+		unlock = &SignedGenesisUnlock{
+			GenesisSeedHex: "726573697374206d7563682c206f626579206c6974746c657c000000000000000000000005",
+			Beacon: []byte{
+				0x58, 0xef, 0xd9, 0x7e, 0xdd, 0x0e, 0xb6, 0x2f,
+				0x51, 0xc7, 0x5d, 0x00, 0x29, 0x12, 0x45, 0x49,
+				0x2e, 0x2f, 0xee, 0x17, 0x24, 0xf4, 0x76, 0x0b,
+				0xe6, 0x18, 0x82, 0xab, 0xca, 0x7f, 0xc8, 0x3a,
+				0xbd, 0x1a, 0x9e, 0x01, 0x71, 0xb2, 0xe0, 0x8c,
+				0x35, 0xa0, 0x42, 0xd0, 0x91, 0x32, 0xb0, 0x42,
+				0xda, 0xee, 0x71, 0xf5, 0xe3, 0x73, 0x93, 0x4e,
+				0x80,
+			},
+		}
+	} else {
+		// From https://releases.quilibrium.com/genesisunlock, skip a download:
+		beacon, _ := base64.StdEncoding.DecodeString("ImqaBAzHM61pHODoywHu2a6FIOqoXKY/RECZuOXjDfds8DBxtA0g+4hCfOgwiti2TpOF8AH7xH0A")
+		unlock = &SignedGenesisUnlock{
+			GenesisSeedHex: "726573697374206d7563682c206f626579206c6974746c657c083fb0a4274b1f70e9aa2b3f",
+			Signatures: []Signature{
+				{
+					PublicKeyHex: "b1214da7f355f5a9edb7bcc23d403bdf789f070cca10db2b4cadc22f2d837afb650944853e35d5f42ef3c4105b802b144b4077d5d3253e4100",
+					SignatureHex: "5176d46e7974cb0d37eb16864fa01ed4d10222ffd38009e451a6339af0ae4938d95dad7af5db7ea9a3bc818cf4dee8e20f9a3be6717d45aa80c0b8bf9783bc5129a7efb0cd900b2a56d84f16d2c531e16a4c4456a37ebed68b95dff3d5b910705aa3963989a92e8908d8eb58622d47bb0c00",
+				},
+				{
+					PublicKeyHex: "de4cfe7083104bfe32f0d4082fa0200464d8b10804a811653eedda376efcad64dd222f0f0ceb0b8ae58abe830d7a7e3f3b2d79d691318daa00",
+					SignatureHex: "6f6fb897e54787d716697b54bb18eab857857114d30ca3abe7949d1d1502662a4b181942a207d7ebb144ebd56b0eb83b7860eddf85d51bcd0065d1429006a5840dad464d21d0ac0293bec6ec0ea9f7b38c48e9979febaa36e51101f8a263d1e7666d3cc23746626168d2ad2c817b36f00a00",
+				},
+				{
+					PublicKeyHex: "540237a35e124882d6b64e7bb5718273fa338e553f772b77fe90570e45303762b34131bdcb6c0b9f2cf9e393d9c7e0f546eeab0bcbbd881680",
+					SignatureHex: "2ef74fb5222ca8053543b6f62aa89a728fb316c17154c191a27fc50d9923ca55bf469c32134df667a142e28ef563205e72fcfcc0afed3ff50032975bee3f6f2b8f14b90a3693d065075880f0e42755de2828882f5245840edb71083fc8620f041ed44da8515b03360ea6d78715c189f71300",
+				},
+				{
+					PublicKeyHex: "fbe4166e37f93f90d2ebf06305315ae11b37e501d09596f8bde11ba9d343034fbca80f252205aa2f582a512a72ad293df371baa582da072900",
+					SignatureHex: "15b25055d570d8a6a1caab8e266995609fc7489045f216871a37201c85515c341c1dbf3f0537ff9436579858ee38c4741dce9e00b4c1ddf180cb592cc73ef6ba6e9374d8a8937fac84ad76a66b528164db9a8de48a11a15557f296f075f729617afe9ca17552f1a8f6dd2c1bb151f2930e00",
+				},
+				{
+					PublicKeyHex: "45170b626884b85d61ae109f2aa9b0e1ecc18b181508431ea6308f3869f2adae49da9799a0a594eaa4ef3ad492518fb1729decd44169d40d00",
+					SignatureHex: "4af69e871617eee5ba8b51d73190500bc064ec77e7e396e4d8bca1942dfb538007b1f1ac65787d57f3406e54279d3d360f465723eaf58a8e002cfd54fe78c2c8799cb71a37ea13debd32b868005ff61eea9946b063fa25407929dc445e99b58786e3fe01749208e2a2e367640d9a66130100",
+				},
+				{
+					PublicKeyHex: "001a4cbfce5d9aeb7e20665b0d236721b228a32f0baee62ffa77f45b82ecaf577e8a38b7ef91fcf7d2d2d2b504f085461398d30b24abb1d700",
+					SignatureHex: "966f12f5b59f9ac18e15608f638938c137017c9a68f5419de8560f6aedffd454b0dbd6326719a37c84b1e56795933f1584e156145f8814970000554d97e98156c1489b95a1cd196391f71f13d4958eaa66054399c710fe32c4e6cb3214c1f2126f3d44a3402247209cf32bf17b5806d63700",
+				},
+				{
+					PublicKeyHex: "61628beef8f6964466fd078d6a2b90a397ab0777a14b9728227fd19f36752f9451b1a8d780740a0b9a8ce3df5f89ca7b9ff17de9274a270980",
+					SignatureHex: "9521933c79b269d33f38ca45f65f02555ae2126e0c378f40ccbf6edc16680035098104caf34a91733043297b44870a739af2ce23a035ffa080b394d438eb781d69167966b7aec1ba2194cda276dfdcf25158d4795f863d779a28c3fd7858ba3b9d3af6c69d91e5609c1b3a28101697500f00",
+				},
+				{
+					PublicKeyHex: "81d63a45f068629f568de812f18be5807bfe828a830097f09cf02330d6acd35e3607401df3fda08b03b68ea6e68afd506b23506b11e87a0f80",
+					SignatureHex: "3ebba8c10d2e188ce8e7138d2189dac51a3854c9706849f28c7f60a264951cc5b88534793e5a25b540bb2cb736da5c0b97040ed904d79afe8061e4ad334b16b89a3e29c1c26f6062fc6db146a00f9b7da76ee237004f60bca6e32f452d9074b4c07402092a62cb2596c2eab96d80454c0000",
+				},
+				{
+					PublicKeyHex: "6e2872f73c4868c4286bef7bfe2f5479a41c42f4e07505efa4883c7950c740252e0eea78eef10c584b19b1dcda01f7767d3135d07c33244100",
+					SignatureHex: "5701f5cd907a105d0421d2d6d49b147410211e297ef1bc7b8040ec96c742d1b628523cda378ebb57e37bf6a9b6d23bf196a75dc1c461d5b5809be734030c41e577854641b103fe394524439e2c538458bdd4b5490176bf35cac03eb90dfd9b54ff87e46f0da4b7fd2057394922c448eb1c00",
+				},
+			},
+			Beacon: beacon,
+		}
+	}
 	if unlock != nil {
 		return unlock, nil
 	}
@@ -190,12 +252,11 @@ func DownloadAndVerifyGenesis(network uint) (*SignedGenesisUnlock, error) {
 		count++
 	}
 
-	if count < len(Signatories)/2+len(Signatories)%2 {
+	if count < ((len(Signatories)-4)/2)+((len(Signatories)-4)%2) {
 		fmt.Printf("Quorum on signatures not met")
 		return nil, errors.New("quorum on signatures not met")
 	}
 
-	fmt.Println("Stasis lock released. Welcome to 2.0.")
 	unlock = checkUnlock
 	return unlock, err
 }
@@ -457,11 +518,14 @@ func PrintLogo() {
 	fmt.Println("████████████████████████████████████████████████████████████████████████████████")
 }
 
-func PrintVersion() {
+func PrintVersion(network uint8) {
 	patch := GetPatchNumber()
 	patchString := ""
 	if patch != 0x00 {
 		patchString = fmt.Sprintf("-p%d", patch)
+	}
+	if network != 0 {
+		patchString = fmt.Sprintf("-b%d", GetRCNumber())
 	}
 	fmt.Println(" ")
 	fmt.Println("                      Quilibrium Node - v" + GetVersionString() + patchString + " – Dusk")
